@@ -3,7 +3,6 @@
 #include "arduino_secrets.h"
 #include <ArduinoHttpClient.h>
 #include <Arduino_JSON.h>
-
 #include <ArduinoIoTCloud.h>
 #include <Arduino_ConnectionHandler.h>
 
@@ -11,7 +10,7 @@ MKRIoTCarrier carrier;
 
 WiFiConnectionHandler ArduinoIoTPreferredConnection(SECRET_SSID, SECRET_PASS);
 
-float pressure,humidity,temperature;
+float pressure,humidity,temperature, temperatureRaw;
 const char THING_ID[] = "5746c121-b1a4-4f9d-91cb-b388dfc2eb9b";
 char serverAddress[] = "www.7timer.info";
 String response;
@@ -40,7 +39,7 @@ void initProperties(){
 bool weatherCheck (void*){
   Serial.println("weather check...");
   pressure = carrier.Pressure.readPressure();
-  temperature = carrier.Env.readTemperature();
+  temperatureRaw = carrier.Env.readTemperature();
   humidity = carrier.Env.readHumidity();
   if (humidity > 100.0){
     humidity = 100.0;
@@ -105,8 +104,9 @@ bool internetSearch (void*){
 }
 
 void setup() {
+ 
   Serial.begin(9600);
-
+  Serial.println("Setup started");
   initProperties();
 
   ArduinoCloud.begin(ArduinoIoTPreferredConnection);
@@ -124,8 +124,6 @@ void setup() {
   carrier.begin();
  
   carrier.Buttons.updateConfig(3);
-  carrier.display.fillScreen(ST77XX_BLACK);
-  carrier.display.setTextColor(ST77XX_RED);
   carrier.display.setRotation(0);
   carrier.display.setTextSize(3);
   delay(1500);
@@ -146,6 +144,8 @@ void loop() {
   ArduinoCloud.update();
  carrier.Buttons.update();
 
+ temperature = temperatureRaw - 4;
+
  //LOCAL
 if (carrier.Buttons.onTouchUp(TOUCH0)) {
 
@@ -158,7 +158,7 @@ if (carrier.Buttons.onTouchUp(TOUCH0)) {
   carrier.display.print("LOCAL");
 
   carrier.display.setCursor(28,75);
-  carrier.display.print(temperature-4);
+  carrier.display.print(temperature);
 
   carrier.display.setCursor(118,75);
   carrier.display.print("C");
@@ -166,7 +166,8 @@ if (carrier.Buttons.onTouchUp(TOUCH0)) {
   carrier.display.setCursor(28,125);
   carrier.display.print(pressure*10.0F);
   
-  if(pressure < 1000){
+  if(pressure < 100.00){
+    Serial.println("pressure < 1000");
     carrier.display.setCursor(136,125);
   } else{
   carrier.display.setCursor(154,125);
